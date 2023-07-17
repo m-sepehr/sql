@@ -63,3 +63,10 @@ VALUES
 -------part I, e)-----------
 DELETE FROM Products
 WHERE date = '2023-07-16';
+
+-------part I, f)-----------
+DROP TABLE Donors;
+DROP TABLE Donations;
+DROP TABLE Products;
+DROP TABLE Sales;
+DROP TABLE salesItems;
