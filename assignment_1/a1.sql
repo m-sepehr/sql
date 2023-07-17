@@ -44,3 +44,7 @@ CREATE TABLE salesItems (
     PRIMARY KEY (sID, pID)
 );
 
+-------part I, b)-----------
+ALTER TABLE Donors 
+DROP COLUMN middeInitial;
+
