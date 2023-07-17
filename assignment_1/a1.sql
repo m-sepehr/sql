@@ -121,3 +121,12 @@ WHERE Products.pID = salesItems.pID AND salesItems.sID = Sales.sID AND Sales.dat
 SELECT SUM(deliveryFee)
 FROM Sales
 WHERE date >= '2023-06-01' AND date <= '2023-06-30';
+
+-------part II, d)---------
+/*Give a monthly report of sales for 2022. The report includes for every month in 2022, the total number of sales, 
+the total amount of sales, and the total amount of the delivery fees.*/
+
+SELECT SUBSTRING (date, 6, 2) AS month, SUM(amount), SUM(deliveryFee)
+FROM Sales
+WHERE SUBSTRING (date, 0, 4) = '2022'
+GROUP BY month
