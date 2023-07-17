@@ -48,3 +48,8 @@ CREATE TABLE salesItems (
 ALTER TABLE Donors 
 DROP COLUMN middeInitial;
 
+-------part I, c)-----------
+ALTER TABLE Donors
+ADD phone VARCHAR(16) DEFAULT 'Unknown', 
+ADD email VARCHAR(80) DEFAULT 'Unknown';
+
