@@ -68,7 +68,9 @@ DROP COLUMN middeInitial;
 Use Unknown as the default value for these attributes.*/
 
 ALTER TABLE Donors
-ADD phone VARCHAR(16) DEFAULT 'Unknown', 
+ADD phone VARCHAR(16) DEFAULT 'Unknown';
+
+ALTER TABLE Donors
 ADD email VARCHAR(80) DEFAULT 'Unknown';
 
 -------part I, d)-----------
@@ -112,3 +114,10 @@ Details include sale ID, product ID, description, price, weight.*/
 SELECT salesItems.sID, Products.pID, description, price, weight
 FROM salesItems, Products, Sales
 WHERE Products.pID = salesItems.pID AND salesItems.sID = Sales.sID AND Sales.date = '2023-07-01';
+
+-------part II, c)----------
+--Give the total amount of delivery fees that have been paid in the month of June of 2023
+
+SELECT SUM(deliveryFee)
+FROM Sales
+WHERE date >= '2023-06-01' AND date <= '2023-06-30';
