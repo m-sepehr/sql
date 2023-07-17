@@ -59,3 +59,7 @@ VALUES
     (1, 'Soccer Ball', '2023-07-16', 25.00, 0.5, true),
     (2, 'Vintage Rolex', '2023-07-16', 25000.00, 0.2, true),
     (3, 'Master tape of The Dark Side of the Moon', '2023-07-16', 12560.00, 0.3, true);
+
+-------part I, e)-----------
+DELETE FROM Products
+WHERE date = '2023-07-16';
