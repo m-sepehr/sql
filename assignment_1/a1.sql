@@ -53,3 +53,9 @@ ALTER TABLE Donors
 ADD phone VARCHAR(16) DEFAULT 'Unknown', 
 ADD email VARCHAR(80) DEFAULT 'Unknown';
 
+-------part I, d)-----------
+INSERT INTO Products (pID, description, date, price, weight, inStock)
+VALUES 
+    (1, 'Soccer Ball', '2023-07-16', 25.00, 0.5, true),
+    (2, 'Vintage Rolex', '2023-07-16', 25000.00, 0.2, true),
+    (3, 'Master tape of The Dark Side of the Moon', '2023-07-16', 12560.00, 0.3, true);
