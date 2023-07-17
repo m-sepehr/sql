@@ -126,10 +126,10 @@ WHERE date >= '2023-06-01' AND date <= '2023-06-30';
 /*Give a monthly report of sales for 2022. The report includes for every month in 2022, the total number of sales, 
 the total amount of sales, and the total amount of the delivery fees.*/
 
-SELECT SUBSTRING (date, 6, 2) AS month, SUM(amount), SUM(deliveryFee)
+SELECT SUBSTRING (date, 6, 2) AS Month, COUNT(*) AS NumOfSales, SUM(amount) AS TotOfSales, SUM(deliveryFee) AS TotOfDeliveryFee
 FROM Sales
-WHERE SUBSTRING (date, 0, 4) = '2022'
-GROUP BY month
+WHERE SUBSTRING (date, 1, 4) = '2022'
+GROUP BY Month
 
 -------part II, e)--------
 /*For every Donor who lives in the city of Montréal, give the total amount of donations she/he donated in 2022. 
