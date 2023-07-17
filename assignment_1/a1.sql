@@ -2,7 +2,7 @@
 the primary key of that relation:
 1. Donors (donorID, firstName, lastName, middleInitial, dateOfBirth, address*, city, postalCode, province, gender, SSN)
 2. Donations (dID, donorID, date, type, amount)
-3. Products (pID, description, date, price, weight)
+3. Products (pID, description, date, price, weight, inStock)
 4. Sales (sID, date, amount, deliveryFee**)
 5. salesItems(sID, pID)
 * Address consists of civic number.
@@ -17,7 +17,7 @@ CREATE TABLE Donors (
     donorID INT PRIMARY KEY,
     firstName VARCHAR(40),
     lastName VARCHAR(60),
-    middeInitial CHAR(1),
+    middleInitial CHAR(1),
     dateOfBirth DATE,
     address INT,
     city VARCHAR(40),
@@ -61,7 +61,7 @@ CREATE TABLE salesItems (
 --A declaration to alter the Donors relation schema by deleting the attribute middleInitial.
 
 ALTER TABLE Donors 
-DROP COLUMN middeInitial;
+DROP COLUMN middleInitial;
 
 -------part I, c)-----------
 /*A declaration to alter the Donors relation schema by adding attributes phone and email. 
@@ -130,3 +130,13 @@ SELECT SUBSTRING (date, 6, 2) AS month, SUM(amount), SUM(deliveryFee)
 FROM Sales
 WHERE SUBSTRING (date, 0, 4) = '2022'
 GROUP BY month
+
+-------part II, e)--------
+/*For every Donor who lives in the city of Montréal, give the total amount of donations she/he donated in 2022. 
+Results should be displayed in ascending order by gender, then by last name then by first name.*/
+
+SELECT Donors.donorID, gender, lastName, firstName, SUM(amount)
+FROM Donors, Donations
+WHERE Donors.donorID = Donations.donorID AND city = 'Montreal'
+GROUP BY Donors.donorID
+ORDER BY gender ASC, lastName ASC, firstName ASC;
