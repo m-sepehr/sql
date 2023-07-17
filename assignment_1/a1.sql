@@ -105,3 +105,10 @@ FROM Donors
 WHERE gender = 'f' AND province = 'QC';
 
 
+-------part II, b)----------
+/* Give details of all the products that were delivered on July 1st, 2023. 
+Details include sale ID, product ID, description, price, weight.*/
+
+SELECT salesItems.sID, Products.pID, description, price, weight
+FROM salesItems, Products, Sales
+WHERE Products.pID = salesItems.pID AND salesItems.sID = Sales.sID AND Sales.date = '2023-07-01';
