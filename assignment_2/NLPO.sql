@@ -19,8 +19,8 @@ USE `NLPO` ;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `NLPO`.`Member` (
   `memberID` VARCHAR(10) NOT NULL,
-  `firstName` VARCHAR(100) NULL,
-  `lastName` VARCHAR(100) NULL,
+  `firstName` VARCHAR(100) NOT NULL,
+  `lastName` VARCHAR(100) NOT NULL,
   `middleInitial` CHAR(1) NULL,
   `dateOfBirth` DATE NULL,
   `memberType` VARCHAR(45) NULL,
@@ -29,9 +29,11 @@ CREATE TABLE IF NOT EXISTS `NLPO`.`Member` (
   `phone` VARCHAR(16) NULL,
   `email` VARCHAR(100) NULL,
   `ssn` INT NULL,
-  `memberStartDate` DATE NULL,
+  `memberStartDate` DATE NOT NULL,
   PRIMARY KEY (`memberID`),
-  UNIQUE INDEX `memberID_UNIQUE` (`memberID` ASC) VISIBLE)
+  UNIQUE INDEX `memberID_UNIQUE` (`memberID` ASC) VISIBLE,
+  CONSTRAINT check_gender CHECK (gender IN ('m', 'f', 'o')),
+  CONSTRAINT check_memberType CHECK (memberType IN ('donor', 'employee', 'client')))
 ENGINE = InnoDB;
 
 
@@ -40,7 +42,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `NLPO`.`Employee` (
   `memberID` VARCHAR(10) NOT NULL,
-  `jobTitle` INT NOT NULL,
+  `jobTitle` VARCHAR(100) NOT NULL,
   `salary` INT NULL,
   PRIMARY KEY (`memberID`),
   INDEX `fk_Employee_Member_idx` (`memberID` ASC) VISIBLE,
@@ -60,11 +62,12 @@ CREATE TABLE IF NOT EXISTS `NLPO`.`Expenses` (
   `approvedByID` VARCHAR(10) NOT NULL,
   `dateOfPayment` DATE NULL,
   `amountOfExpense` DECIMAL(8,2) NULL,
-  `typeOfExpense` VARCHAR(45) NULL,
-  `descriptionOfExpense` VARCHAR(255) NULL,
+  `typeOfExpense` VARCHAR(45) NOT NULL,
+  `descriptionOfExpense` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`expenseID`, `approvedByID`),
   UNIQUE INDEX `expenseID_UNIQUE` (`expenseID` ASC) VISIBLE,
   INDEX `fk_Expenses_Employee1_idx` (`approvedByID` ASC) VISIBLE,
+  CONSTRAINT check_typeOfExpense CHECK (typeOfExpense IN ('rent', 'bill', 'charity')),
   CONSTRAINT `fk_Expenses_Employee1`
     FOREIGN KEY (`approvedByID`)
     REFERENCES `NLPO`.`Employee` (`memberID`)
@@ -79,12 +82,13 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `NLPO`.`Donations` (
   `donationID` INT NOT NULL,
   `donorID` VARCHAR(10) NOT NULL,
-  `dateOfDonation` DATE NULL,
-  `typeOfDonation` VARCHAR(45) NULL,
-  `amountOfDonation` DECIMAL(8,2) NULL,
+  `dateOfDonation` DATE NOT NULL,
+  `typeOfDonation` VARCHAR(45) NOT NULL,
+  `amountOfDonation` DECIMAL(8,2) NOT NULL,
   PRIMARY KEY (`donationID`, `donorID`),
   UNIQUE INDEX `donationID_UNIQUE` (`donationID` ASC) VISIBLE,
   INDEX `fk_Donations_Member1_idx` (`donorID` ASC) VISIBLE,
+  CONSTRAINT check_typeOfDonation CHECK (typeOfDonation IN ('money', 'product')),
   CONSTRAINT `fk_Donations_Member1`
     FOREIGN KEY (`donorID`)
     REFERENCES `NLPO`.`Member` (`memberID`)
@@ -100,11 +104,11 @@ CREATE TABLE IF NOT EXISTS `NLPO`.`Products` (
   `productID` INT NOT NULL,
   `donationID` INT NOT NULL,
   `donorID` VARCHAR(10) NOT NULL,
-  `productDescription` VARCHAR(255) NULL,
-  `donationDate` DATE NULL,
+  `productDescription` VARCHAR(255) NOT NULL,
+  `donationDate` DATE NOT NULL,
   `sellingPrice` DECIMAL(8,2) NULL,
-  `weight` DECIMAL(8,2) NULL,
-  `inStock` VARCHAR(3) NULL,
+  `weight` DECIMAL(8,2) NOT NULL,
+  `inStock` VARCHAR(3) NOT NULL DEFAULT 'yes',
   PRIMARY KEY (`productID`, `donationID`, `donorID`),
   INDEX `fk_Products_Donations1_idx` (`donationID` ASC, `donorID` ASC) VISIBLE,
   CONSTRAINT `fk_Products_Donations1`
@@ -122,10 +126,11 @@ CREATE TABLE IF NOT EXISTS `NLPO`.`Sales` (
   `saleID` INT NOT NULL,
   `dateOfSale` DATE NULL,
   `amountOfSale` DECIMAL(8,2) NULL,
-  `deliveryType` VARCHAR(45) NULL,
+  `deliveryType` VARCHAR(45) NOT NULL,
   `deliveryFee` DECIMAL(8,2) NULL DEFAULT 0,
   PRIMARY KEY (`saleID`),
-  UNIQUE INDEX `saleID_UNIQUE` (`saleID` ASC) VISIBLE)
+  UNIQUE INDEX `saleID_UNIQUE` (`saleID` ASC) VISIBLE,
+  CONSTRAINT check_deliveryType CHECK (deliveryType IN ('pickup', 'delivery')))
 ENGINE = InnoDB;
 
 
