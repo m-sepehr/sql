@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `NLPO`.`Member` (
   `dateOfBirth` DATE NULL,
   `memberType` VARCHAR(45) NULL,
   `address` VARCHAR(100) NULL,
+  `city` VARCHAR(100) NULL,
   `gender` CHAR(1) NULL,
   `phone` VARCHAR(16) NULL,
   `email` VARCHAR(100) NULL,
@@ -124,13 +125,19 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `NLPO`.`Sales` (
   `saleID` INT NOT NULL,
+  `clientID` VARCHAR(10) NOT NULL,
   `dateOfSale` DATE NULL,
   `amountOfSale` DECIMAL(8,2) NULL,
   `deliveryType` VARCHAR(45) NOT NULL,
   `deliveryFee` DECIMAL(8,2) NULL DEFAULT 0,
   PRIMARY KEY (`saleID`),
   UNIQUE INDEX `saleID_UNIQUE` (`saleID` ASC) VISIBLE,
-  CONSTRAINT check_deliveryType CHECK (deliveryType IN ('pickup', 'delivery')))
+  CONSTRAINT check_deliveryType CHECK (deliveryType IN ('pickup', 'delivery')),
+  CONSTRAINT `fk_Sales_Member1`
+    FOREIGN KEY (`clientID`)
+    REFERENCES `NLPO`.`Member` (`memberID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
