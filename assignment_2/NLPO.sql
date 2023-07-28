@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `NLPO`.`Member` (
   `phone` VARCHAR(16) NULL,
   `email` VARCHAR(100) NULL,
   `ssn` INT NULL,
-  `memberStartDate` VARCHAR(45) NULL,
+  `memberStartDate` DATE NULL,
   PRIMARY KEY (`memberID`),
   UNIQUE INDEX `memberID_UNIQUE` (`memberID` ASC) VISIBLE)
 ENGINE = InnoDB;
@@ -123,8 +123,9 @@ CREATE TABLE IF NOT EXISTS `NLPO`.`Sales` (
   `dateOfSale` DATE NULL,
   `amountOfSale` DECIMAL(8,2) NULL,
   `deliveryType` VARCHAR(45) NULL,
-  `deliveryFee` DECIMAL(8,2) GENERATED ALWAYS AS (),
-  PRIMARY KEY (`saleID`))
+  `deliveryFee` DECIMAL(8,2) NULL DEFAULT 0,
+  PRIMARY KEY (`saleID`),
+  UNIQUE INDEX `saleID_UNIQUE` (`saleID` ASC) VISIBLE)
 ENGINE = InnoDB;
 
 
@@ -135,14 +136,14 @@ CREATE TABLE IF NOT EXISTS `NLPO`.`SalesItems` (
   `productID` INT NOT NULL,
   `saleID` INT NOT NULL,
   PRIMARY KEY (`productID`, `saleID`),
-  INDEX `fk_Products_has_Sales_Sales1_idx` (`saleID` ASC) VISIBLE,
-  INDEX `fk_Products_has_Sales_Products1_idx` (`productID` ASC) VISIBLE,
-  CONSTRAINT `fk_Products_has_Sales_Products1`
+  INDEX `fk_SalesItems_Sales1_idx` (`saleID` ASC) VISIBLE,
+  UNIQUE INDEX `productID_UNIQUE` (`productID` ASC) VISIBLE,
+  CONSTRAINT `fk_SalesItems_Products1`
     FOREIGN KEY (`productID`)
     REFERENCES `NLPO`.`Products` (`productID`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Products_has_Sales_Sales1`
+  CONSTRAINT `fk_SalesItems_Sales1`
     FOREIGN KEY (`saleID`)
     REFERENCES `NLPO`.`Sales` (`saleID`)
     ON DELETE NO ACTION
