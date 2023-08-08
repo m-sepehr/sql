@@ -17,7 +17,7 @@
             height: 100vh;
         }
         #container {
-            width: 60%;
+            width: 70%;
             padding: 20px;
             background-color: #ffffff;
             box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.2);
@@ -37,15 +37,22 @@
             border-radius: 5px;
             resize: none;
         }
+        .buttons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px; /* Add some margin at the top */
+            flex-direction: row; /* Align buttons horizontally */
+        }
         button {
             display: block;
-            margin: 10px auto;
             padding: 10px 20px;
             background-color: #007bff;
             color: #fff;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            margin: 0px 10px; /* Add some margin between buttons */
         }
         button:hover {
             background-color: #0056b3;
@@ -61,6 +68,9 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+        #clearButton {
+            background-color: #dc3545; /* Red background color */
+        }
     </style>
 </head>
 <body>
@@ -68,8 +78,13 @@
         <h1>Education Personnel Status Tracking System (EPSTS)</h1>
         <form method="post" action="">
             <textarea name="sqlQuery" placeholder="Enter your SQL query here..." required></textarea>
-            <button type="submit">Execute</button>
+                <div class="buttons"> <!-- Wrap buttons in a container div -->
+                    <button type="submit">Execute</button>
+                    <button type="button" id="clearButton">Clear Results</button>
+                </div>
         </form>
+        <div if="results">
+            <ul id="resultList">
         <?php
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $sql = $_POST["sqlQuery"];
@@ -87,7 +102,7 @@
             
             if ($result !== false) {
                 echo '<div style="text-align: center;">'; // Center the table
-                echo '<table style="border-collapse: collapse; width: 80%; margin: 0 auto;">'; // Center the table horizontally
+                echo '<table style="border-collapse: collapse; width: 90%; margin: 0 auto;">'; // Center the table horizontally
                 
                 // Display attribute names in bold
                 $field_names = $result->fetch_fields();
@@ -115,6 +130,14 @@
             $conn->close();
         }
         ?>
+        </ul>
+        </div>
     </div>
+    <script>
+        // JavaScript to clear results
+        document.getElementById("clearButton").addEventListener("click", function() {
+            document.getElementById("resultList").innerHTML = ""; // Clear the content
+        });
+</script>
 </body>
 </html>
