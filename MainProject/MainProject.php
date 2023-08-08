@@ -53,6 +53,7 @@
             border-radius: 5px;
             cursor: pointer;
             margin: 0px 10px; /* Add some margin between buttons */
+            margin-bottom: 15px; /* Add margin at the bottom */
         }
         button:hover {
             background-color: #0056b3;
@@ -71,6 +72,23 @@
         #clearButton {
             background-color: #dc3545; /* Red background color */
         }
+        #results {
+            max-height: 60vh; /* Adjust the maximum height as needed */
+            overflow-y: auto;
+        }
+        #resultsList th {
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2;
+            z-index: 1;
+            
+        }
+        #headerRow {
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2;
+            z-index: 1;  
+        }
     </style>
 </head>
 <body>
@@ -83,61 +101,62 @@
                     <button type="button" id="clearButton">Clear Results</button>
                 </div>
         </form>
-        <div if="results">
-            <ul id="resultList">
-        <?php
-        if ($_SERVER["REQUEST_METHOD"] == "POST") {
-            $sql = $_POST["sqlQuery"];
-            $servername = "mdc353.encs.concordia.ca";
-            $username = "mdc353_1";
-            $password = "0705dtbs";
-            $dbname = "mdc353_1";
-            
-            $conn = new mysqli($servername, $username, $password, $dbname);
-            if ($conn->connect_error) {
-                die("Connection failed: " . $conn->connect_error);
-            }
-            
-            $result = $conn->query($sql);
-            
-            if ($result !== false) {
-                echo '<div style="text-align: center;">'; // Center the table
-                echo '<table style="border-collapse: collapse; width: 90%; margin: 0 auto;">'; // Center the table horizontally
-                
-                // Display attribute names in bold
-                $field_names = $result->fetch_fields();
-                echo "<tr>";
-                foreach ($field_names as $field) {
-                    echo "<th style='border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;'><b>" . htmlspecialchars($field->name) . "</b></th>";
-                }
-                echo "</tr>";
-                
-                // Display data rows
-                while ($row = $result->fetch_assoc()) {
-                    echo "<tr>";
-                    foreach ($row as $value) {
-                        echo "<td style='border: 1px solid #ddd; padding: 8px;'>" . htmlspecialchars($value) . "</td>";
+        <div id="results">
+            <table id="resultList">
+                <?php
+                    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+                        $sql = $_POST["sqlQuery"];
+                        $servername = "mdc353.encs.concordia.ca";
+                        $username = "mdc353_1";
+                        $password = "0705dtbs";
+                        $dbname = "mdc353_1";
+
+                        $conn = new mysqli($servername, $username, $password, $dbname);
+                        if ($conn->connect_error) {
+                            die("Connection failed: " . $conn->connect_error);
+                        }
+
+                        $result = $conn->query($sql);
+
+                        if ($result !== false) {
+                            echo '<div style="text-align: center;">'; // Center the table
+                            echo '<table style="border-collapse: collapse; width: 90%; margin: 0 auto;">'; // Center the table horizontally
+
+                            // Display attribute names in bold
+                            $field_names = $result->fetch_fields();
+                            // Display attribute names in bold (header row)
+                        echo "<tr id='headerRow'>";
+                        foreach ($field_names as $field) {
+                            echo "<th style='border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;'><b>" . htmlspecialchars($field->name) . "</b></th>";
+                        }
+                        echo "</tr>";
+
+                            // Display data rows
+                            while ($row = $result->fetch_assoc()) {
+                                echo "<tr>";
+                                foreach ($row as $value) {
+                                    echo "<td style='border: 1px solid #ddd; padding: 8px;'>" . htmlspecialchars($value) . "</td>";
+                                }
+                                echo "</tr>";
+                            }
+
+                            echo '</table>';
+                            echo '</div>';
+                        } else {
+                            echo "Error: " . $sql . "<br>" . $conn->error;
+                        }
+
+                        $conn->close();
                     }
-                    echo "</tr>";
-                }
-                
-                echo '</table>';
-                echo '</div>';
-            } else {
-                echo "Error: " . $sql . "<br>" . $conn->error;
-            }
-            
-            $conn->close();
-        }
-        ?>
-        </ul>
+                    ?>
+            </table>
         </div>
     </div>
     <script>
         // JavaScript to clear results
         document.getElementById("clearButton").addEventListener("click", function() {
-            document.getElementById("resultList").innerHTML = ""; // Clear the content
+        document.getElementById("results").innerHTML = ""; // Clear the content
         });
-</script>
+    </script>
 </body>
 </html>
