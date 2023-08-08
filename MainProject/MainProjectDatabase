@@ -167,10 +167,11 @@ ENGINE = InnoDB;
 -- Table `mdc353_1`.`Email`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mdc353_1`.`Email` (
-  `emailID` INT NOT NULL,
+  `emailID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `subject` VARCHAR(100) NULL,
   `body` VARCHAR(1024) NULL,
-  PRIMARY KEY (`emailID`))
+  PRIMARY KEY (`emailID`),
+  UNIQUE INDEX `emailID_UNIQUE` (`emailID` ASC) VISIBLE)
 ENGINE = InnoDB;
 
 
