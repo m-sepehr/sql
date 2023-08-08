@@ -1,0 +1,235 @@
+-- MySQL Workbench Forward Engineering
+
+SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- -----------------------------------------------------
+-- Schema mdc353_1
+-- -----------------------------------------------------
+
+-- -----------------------------------------------------
+-- Schema mdc353_1
+-- -----------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS `mdc353_1` DEFAULT CHARACTER SET utf8 ;
+USE `mdc353_1` ;
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`AddressDetails`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`AddressDetails` (
+  `postalCode` CHAR(7) NOT NULL,
+  `province` VARCHAR(100) NULL,
+  `city` VARCHAR(100) NULL,
+  PRIMARY KEY (`postalCode`),
+  UNIQUE INDEX `postalCode_UNIQUE` (`postalCode` ASC) VISIBLE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`Person`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`Person` (
+  `medicareID` CHAR(11) NOT NULL,
+  `firstName` VARCHAR(45) NULL,
+  `lastName` VARCHAR(60) NULL,
+  `dateOfBirth` DATE NULL,
+  `medicareExpiry` DATE NULL,
+  `citizenship` VARCHAR(100) NULL,
+  `email` VARCHAR(80) NULL,
+  `phone` VARCHAR(16) NULL,
+  `address` VARCHAR(100) NULL,
+  `postalCode` CHAR(7) NOT NULL,
+  PRIMARY KEY (`medicareID`),
+  UNIQUE INDEX `medicareID_UNIQUE` (`medicareID` ASC) VISIBLE,
+  INDEX `fk_Person_AddressDetails1_idx` (`postalCode` ASC) VISIBLE,
+  CONSTRAINT `fk_Person_AddressDetails1`
+    FOREIGN KEY (`postalCode`)
+    REFERENCES `mdc353_1`.`AddressDetails` (`postalCode`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`Facility`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`Facility` (
+  `facilityID` VARCHAR(5) NOT NULL,
+  `facilityName` VARCHAR(60) NOT NULL,
+  `ministryID` INT NOT NULL,
+  `type` VARCHAR(60) NOT NULL,
+  `subType` VARCHAR(60) NULL,
+  `presidentID` CHAR(11) NULL,
+  `webAddress` VARCHAR(80) NULL,
+  `address` VARCHAR(100) NULL,
+  `city` VARCHAR(100) NULL,
+  `province` VARCHAR(100) NULL,
+  `postalCode` CHAR(7) NOT NULL,
+  `phone` VARCHAR(16) NULL,
+  PRIMARY KEY (`facilityID`),
+  UNIQUE INDEX `facilityID_UNIQUE` (`facilityID` ASC) VISIBLE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`Employee`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`Employee` (
+  `medicareID` CHAR(11) NOT NULL,
+  `facilityID` VARCHAR(5) NOT NULL,
+  `occupation` VARCHAR(60) NOT NULL,
+  `specialty` VARCHAR(60) NULL,
+  `secondRole` VARCHAR(60) NULL,
+  `startDate` DATE NOT NULL,
+  `endDate` DATE NULL,
+  INDEX `fk_Employee_Person1_idx` (`medicareID` ASC) VISIBLE,
+  PRIMARY KEY (`medicareID`, `facilityID`, `startDate`),
+  INDEX `fk_Employee_Facility1_idx` (`facilityID` ASC) VISIBLE,
+  CONSTRAINT `fk_Employee_Person1`
+    FOREIGN KEY (`medicareID`)
+    REFERENCES `mdc353_1`.`Person` (`medicareID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Employee_Facility1`
+    FOREIGN KEY (`facilityID`)
+    REFERENCES `mdc353_1`.`Facility` (`facilityID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`Student`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`Student` (
+  `medicareID` CHAR(11) NOT NULL,
+  `facilityID` VARCHAR(5) NOT NULL,
+  `currentLevel` VARCHAR(30) NULL,
+  `startDate` DATE NOT NULL,
+  `endDate` DATE NULL,
+  INDEX `fk_Student_Person1_idx` (`medicareID` ASC) VISIBLE,
+  PRIMARY KEY (`medicareID`, `facilityID`, `startDate`),
+  INDEX `fk_Student_Facility1_idx` (`facilityID` ASC) VISIBLE,
+  CONSTRAINT `fk_Student_Person1`
+    FOREIGN KEY (`medicareID`)
+    REFERENCES `mdc353_1`.`Person` (`medicareID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Student_Facility1`
+    FOREIGN KEY (`facilityID`)
+    REFERENCES `mdc353_1`.`Facility` (`facilityID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`Infections`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`Infections` (
+  `infectionID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `medicareID` CHAR(11) NOT NULL,
+  `typeOfInfection` VARCHAR(60) NULL,
+  `dateOfInfection` DATE NULL,
+  PRIMARY KEY (`infectionID`),
+  UNIQUE INDEX `infectionID_UNIQUE` (`infectionID` ASC) VISIBLE,
+  INDEX `fk_Infections_Person1_idx` (`medicareID` ASC) VISIBLE,
+  CONSTRAINT `fk_Infections_Person1`
+    FOREIGN KEY (`medicareID`)
+    REFERENCES `mdc353_1`.`Person` (`medicareID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`Vaccinations`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`Vaccinations` (
+  `vaxID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `medicareID` CHAR(11) NOT NULL,
+  `vaxType` VARCHAR(60) NULL,
+  `dateOfVax` DATE NULL,
+  `doseNumber` INT NULL,
+  PRIMARY KEY (`vaxID`),
+  INDEX `fk_Vaccinations_Person1_idx` (`medicareID` ASC) VISIBLE,
+  UNIQUE INDEX `vaxID_UNIQUE` (`vaxID` ASC) VISIBLE,
+  CONSTRAINT `fk_Vaccinations_Person1`
+    FOREIGN KEY (`medicareID`)
+    REFERENCES `mdc353_1`.`Person` (`medicareID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`Email`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`Email` (
+  `emailID` INT NOT NULL,
+  `subject` VARCHAR(100) NULL,
+  `body` VARCHAR(1024) NULL,
+  PRIMARY KEY (`emailID`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`EmailLog`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`EmailLog` (
+  `emailID` INT NOT NULL,
+  `facilityID` VARCHAR(5) NOT NULL,
+  `medicareID` CHAR(11) NOT NULL,
+  `emailDate` VARCHAR(45) NULL,
+  `bodySummary` VARCHAR(80) NULL,
+  PRIMARY KEY (`emailID`),
+  INDEX `fk_EmailLog_Email1_idx` (`emailID` ASC) VISIBLE,
+  INDEX `fk_EmailLog_Person1_idx` (`medicareID` ASC) VISIBLE,
+  INDEX `fk_EmailLog_Facility1_idx` (`facilityID` ASC) VISIBLE,
+  CONSTRAINT `fk_EmailLog_Email1`
+    FOREIGN KEY (`emailID`)
+    REFERENCES `mdc353_1`.`Email` (`emailID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_EmailLog_Person1`
+    FOREIGN KEY (`medicareID`)
+    REFERENCES `mdc353_1`.`Person` (`medicareID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_EmailLog_Facility1`
+    FOREIGN KEY (`facilityID`)
+    REFERENCES `mdc353_1`.`Facility` (`facilityID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `mdc353_1`.`Schedule`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdc353_1`.`Schedule` (
+  `medicareID` CHAR(11) NOT NULL,
+  `facilityID` VARCHAR(5) NULL,
+  `workDate` DATE NOT NULL,
+  `startTime` TIME NOT NULL,
+  `endTime` TIME NULL,
+  PRIMARY KEY (`medicareID`, `workDate`, `startTime`),
+  INDEX `fk_Person_has_Facility_Person1_idx` (`medicareID` ASC) VISIBLE,
+  INDEX `fk_Schedule_Facility1_idx` (`facilityID` ASC) VISIBLE,
+  CONSTRAINT `fk_Person_has_Facility_Person1`
+    FOREIGN KEY (`medicareID`)
+    REFERENCES `mdc353_1`.`Person` (`medicareID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Schedule_Facility1`
+    FOREIGN KEY (`facilityID`)
+    REFERENCES `mdc353_1`.`Facility` (`facilityID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
