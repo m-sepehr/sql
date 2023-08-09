@@ -264,12 +264,12 @@ DECLARE infected_person_type VARCHAR(60);
     WHERE medicareID = NEW.medicareID;
     
     -- Check if the infection is COVID-19 and the person is a teacher
-    IF infected_person_type = 'COVID-19' AND person_type = 'teacher' THEN
+    IF infected_person_type = 'COVID-19' AND person_type = ('teacher' OR 'Teacher' OR 'TEACHER') THEN
         SELECT DATE_ADD(NEW.dateOfInfection, INTERVAL 2 WEEK) INTO schedule_date;
         
         -- Cancel schedules for the infected person for the next two weeks
         UPDATE Schedule
-        SET startTime = NULL, endTime = NULL
+        SET startTime = '00:00:00', endTime = '00:00:00'
         WHERE medicareID = NEW.medicareID
             AND workDate BETWEEN NEW.dateOfInfection AND schedule_date;
         
@@ -341,7 +341,7 @@ BEGIN
     -- Get the date of the most recent COVID-19 vaccination for the employee
     SELECT MAX(dateOfVax) INTO vaccination_date
     FROM Vaccinations
-    WHERE medicareID = NEW.medicareID AND vaxType = 'COVID-19';
+    WHERE medicareID = NEW.medicareID AND ((vaxType = 'Pfizer') OR (vaxType = 'Moderna') OR (vaxType = 'AstraZeneca') OR (vaxType = 'Johnson & Johnson'));
 
     -- Calculate the date six months ago from the current date
     SET six_months_ago = DATE_SUB(NOW(), INTERVAL 6 MONTH);
@@ -355,59 +355,94 @@ END$$
 
 DELIMITER $$
 
-CREATE PROCEDURE SendWeeklyEmails()
+CREATE DEFINER = CURRENT_USER PROCEDURE `SendWeeklyScheduleEmails`()
 BEGIN
-    DECLARE startOfWeek DATE;
-    DECLARE endOfWeek DATE;
-    DECLARE currentDate DATE;
-    DECLARE facilityName VARCHAR(60);
-    DECLARE emailSubject VARCHAR(100);
-    DECLARE emailBody VARCHAR(1024);
+    DECLARE today_date DATE;
+    DECLARE start_date DATE;
+    DECLARE end_date DATE;
+    DECLARE facility_id VARCHAR(5);
+    DECLARE facility_name VARCHAR(60);
+    DECLARE employee_id CHAR(11);
+    DECLARE employee_first_name VARCHAR(45);
+    DECLARE employee_last_name VARCHAR(60);
+    DECLARE email_subject VARCHAR(100);
+    DECLARE email_body VARCHAR(1024);
     
-    SET startOfWeek = CURDATE() + INTERVAL 1 - DAYOFWEEK(CURDATE()) DAY;
-    SET endOfWeek = startOfWeek + INTERVAL 6 DAY;
-    SET currentDate = startOfWeek;
+    -- Get current date
+    SET today_date = NOW();
+    SET start_date = DATE_ADD(today_date, INTERVAL 1 DAY); -- Start from tomorrow
+    SET end_date = DATE_ADD(start_date, INTERVAL 6 DAY); -- Seven-day schedule
     
-    WHILE currentDate <= endOfWeek DO
-        SET facilityName = (SELECT DISTINCT f.facilityName
-                            FROM Facility f
-                            INNER JOIN Schedule s ON f.facilityID = s.facilityID
-                            WHERE s.workDate = currentDate);
+    -- Loop through facilities
+    SET facility_id = '';
+    facility_loop: LOOP
+        SELECT facilityID, facilityName INTO facility_id, facility_name
+        FROM Facility
+        WHERE facilityID > facility_id
+        LIMIT 1;
         
-        SET emailSubject = CONCAT(facilityName, ' Schedule for ', DATE_FORMAT(currentDate, '%d-%b-%Y'), ' to ', DATE_FORMAT(currentDate + INTERVAL 6 DAY, '%d-%b-%Y'));
+        IF facility_id IS NULL THEN
+            LEAVE facility_loop;
+        END IF;
         
-        SET emailBody = CONCAT('Facility Name: ', facilityName, '\n');
-        
-        SELECT GROUP_CONCAT(empDetails SEPARATOR '\n') INTO emailBody
-        FROM (
-            SELECT CONCAT('Employee: ', p.firstName, ' ', p.lastName, ' (', p.email, ')',
-                          IF(s.startTime IS NOT NULL,
-                             CONCAT('\nStart Time: ', s.startTime, ' End Time: ', s.endTime),
-                             '\nNo Assignment')) AS empDetails
-            FROM Person p
-            INNER JOIN Schedule s ON p.medicareID = s.medicareID
-            WHERE s.workDate = currentDate
-        ) AS subquery;
-
-        -- Insert email record
-        INSERT INTO Email (subject, body) VALUES (emailSubject, emailBody);
-        -- Insert email log record
-        INSERT INTO EmailLog (emailID, facilityID, medicareID, emailDate, bodySummary)
-        VALUES (LAST_INSERT_ID(), facility_id, medicare_id, NOW(), LEFT(email_body, 80));
-        SET currentDate = currentDate + INTERVAL 1 DAY;
-    END WHILE;
+        -- Loop through employees in the facility
+        SET employee_id = '';
+        employee_loop: LOOP
+            SELECT e.medicareID, firstName, lastName INTO employee_id, employee_first_name, employee_last_name
+            FROM Employee e, Person
+            WHERE facilityID = facility_id AND e.medicareID > employee_id
+            LIMIT 1;
+            
+            IF employee_id IS NULL THEN
+                LEAVE employee_loop;
+            END IF;
+            
+            -- Generate email subject
+            SET email_subject = CONCAT(facility_name, ' Schedule for ', DATE_FORMAT(start_date, '%d-%b-%Y'), ' to ', DATE_FORMAT(end_date, '%d-%b-%Y'));
+            
+            -- Generate email body
+            SET email_body = CONCAT('Facility Name: ', facility_name, '\n',
+                                    'Address: ', (SELECT address FROM Facility WHERE facilityID = facility_id), '\n',
+                                    'Employee: ', employee_first_name, ' ', employee_last_name, '\n',
+                                    'Email: ', (SELECT email FROM Person WHERE medicareID = employee_id), '\n\n',
+                                    'Schedule for the coming week:', '\n');
+            
+            -- Loop through days of the week
+            SET @day := start_date;
+            day_loop: WHILE @day <= end_date DO
+                SET email_body = CONCAT(email_body, DATE_FORMAT(@day, '%W'), ': ');
+                
+                -- Get employee's schedule for the day
+                SET @employee_schedule := '';
+                SELECT GROUP_CONCAT(
+                    IFNULL(DATE_FORMAT(startTime, '%H:%i'), 'No Assignment'), ' - ',
+                    IFNULL(DATE_FORMAT(endTime, '%H:%i'), 'No Assignment')
+                ) INTO @employee_schedule
+                FROM Schedule
+                WHERE medicareID = employee_id AND workDate = @day;
+                
+                SET email_body = CONCAT(email_body, @employee_schedule, '\n');
+                
+                SET @day := DATE_ADD(@day, INTERVAL 1 DAY);
+            END WHILE day_loop;
+            
+            -- Send the email
+            INSERT INTO Email (subject, body) VALUES (email_subject, email_body);
+            
+            -- Insert email log record
+            INSERT INTO EmailLog (emailID, facilityID, medicareID, emailDate, bodySummary)
+            VALUES (LAST_INSERT_ID(), facility_id, employee_id, NOW(), LEFT(email_body, 80));
+        END LOOP employee_loop;
+    END LOOP facility_loop;
     
-    SELECT 'Emails sent successfully.';
 END$$
-
-DELIMITER $$
 
 CREATE EVENT SendWeeklyEmailsEvent
 ON SCHEDULE EVERY 1 WEEK
 STARTS TIMESTAMP('2023-01-01') -- first sunday of 2023
 DO
 BEGIN
-    CALL SendWeeklyEmails();
+    CALL SendWeeklyScheduleEmails();
 END$$
 
 DELIMITER ;
