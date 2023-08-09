@@ -264,7 +264,7 @@ DECLARE infected_person_type VARCHAR(60);
     WHERE medicareID = NEW.medicareID;
     
     -- Check if the infection is COVID-19 and the person is a teacher
-    IF infected_person_type = 'COVID-19' AND person_type = ('teacher' OR 'Teacher' OR 'TEACHER') THEN
+    IF infected_person_type = 'COVID-19' AND (person_type = 'teacher') OR (person_type = 'Teacher') OR (person_type = 'TEACHER') THEN
         SELECT DATE_ADD(NEW.dateOfInfection, INTERVAL 2 WEEK) INTO schedule_date;
         
         -- Cancel schedules for the infected person for the next two weeks
