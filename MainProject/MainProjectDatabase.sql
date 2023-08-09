@@ -358,83 +358,101 @@ DELIMITER $$
 
 CREATE DEFINER = CURRENT_USER PROCEDURE `SendWeeklyScheduleEmails`()
 BEGIN
-    DECLARE today_date DATE;
-    DECLARE start_date DATE;
-    DECLARE end_date DATE;
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE employee_id CHAR(11);
     DECLARE facility_id VARCHAR(5);
     DECLARE facility_name VARCHAR(60);
-    DECLARE employee_id CHAR(11);
+    DECLARE facility_address VARCHAR(100);
     DECLARE employee_first_name VARCHAR(45);
     DECLARE employee_last_name VARCHAR(60);
+    DECLARE employee_email VARCHAR(80);
     DECLARE email_subject VARCHAR(100);
     DECLARE email_body VARCHAR(1024);
+    DECLARE start_date DATE;
+    DECLARE end_date DATE;
+    DECLARE work_date DATE;
+    DECLARE start_time TIME;
+    DECLARE end_time TIME;
     
-    -- Get current date
-    SET today_date = NOW();
-    SET start_date = DATE_ADD(today_date, INTERVAL 1 DAY); -- Start from tomorrow
-    SET end_date = DATE_ADD(start_date, INTERVAL 6 DAY); -- Seven-day schedule
+    -- Declare a cursor to loop through all employees
+    DECLARE employee_cursor CURSOR FOR
+        SELECT DISTINCT e.medicareID, e.facilityID, f.facilityName, f.address, p.firstName, p.lastName, p.email
+        FROM Employee e
+        INNER JOIN Facility f ON e.facilityID = f.facilityID
+        INNER JOIN Person p ON e.medicareID = p.medicareID;
     
-    -- Loop through facilities
-    SET facility_id = '';
-    facility_loop: LOOP
-        SELECT facilityID, facilityName INTO facility_id, facility_name
-        FROM Facility
-        WHERE facilityID > facility_id
-        LIMIT 1;
+    -- Declare a handler to close the cursor when done
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+    
+    -- Open the cursor
+    OPEN employee_cursor;
+    
+       -- Loop through all employees
+    employee_loop: LOOP
+    
+        -- Fetch the next employee from the cursor
+        FETCH employee_cursor INTO employee_id, facility_id, facility_name, facility_address, employee_first_name, employee_last_name, employee_email;
         
-        IF facility_id IS NULL THEN
-            LEAVE facility_loop;
+        -- Check if done
+        IF done THEN
+            LEAVE employee_loop;
         END IF;
         
-        -- Loop through employees in the facility
-        SET employee_id = '';
-        employee_loop: LOOP
-            SELECT e.medicareID, firstName, lastName INTO employee_id, employee_first_name, employee_last_name
-            FROM Employee e, Person
-            WHERE facilityID = facility_id AND e.medicareID > employee_id
-            LIMIT 1;
+        -- Set the start date and end date of the week (Sunday to Saturday)
+        SET start_date = CURDATE() + INTERVAL 1 - DAYOFWEEK(CURDATE()) DAY;
+        SET end_date = start_date + INTERVAL 6 DAY;
+        
+        -- Create the email subject
+        SET email_subject = CONCAT(facility_name, ' Schedule for ', DATE_FORMAT(start_date, '%d-%b-%Y'), ' to ', DATE_FORMAT(end_date, '%d-%b-%Y'));
+        
+        -- Create the email body header
+        SET email_body = CONCAT('Facility Name: ', facility_name, '\n');
+        SET email_body = CONCAT(email_body, 'Facility Address: ', facility_address, '\n');
+        SET email_body = CONCAT(email_body, 'Employee: ', employee_first_name, ' ', employee_last_name, ' (', employee_email, ')', '\n\n');
+        
+        -- Loop through all days of the week
+        WHILE start_date <= end_date DO
+        
+            -- Append the day of the week to the email body
+            SET email_body = CONCAT(email_body, DATE_FORMAT(start_date, '%W'), ': ');
             
-            IF employee_id IS NULL THEN
-                LEAVE employee_loop;
+            -- Get the start time and end time of the schedule for that day and facility
+            SELECT startTime, endTime INTO start_time, end_time
+            FROM Schedule
+            WHERE medicareID = employee_id AND facilityID = facility_id AND workDate = start_date;
+            
+            -- Check if there is a schedule for that day and facility
+            IF start_time IS NOT NULL AND end_time IS NOT NULL THEN
+            
+                -- Append the start time and end time to the email body
+                SET email_body = CONCAT(email_body, 'Start Time: ', start_time, ' End Time: ', end_time);
+                
+            ELSE
+            
+                -- Append "No Assignment" to the email body
+                SET email_body = CONCAT(email_body, 'No Assignment');
+                
             END IF;
             
-            -- Generate email subject
-            SET email_subject = CONCAT(facility_name, ' Schedule for ', DATE_FORMAT(start_date, '%d-%b-%Y'), ' to ', DATE_FORMAT(end_date, '%d-%b-%Y'));
+            -- Add a new line to the email body
+            SET email_body = CONCAT(email_body, '\n');
             
-            -- Generate email body
-            SET email_body = CONCAT('Facility Name: ', facility_name, '\n',
-                                    'Address: ', (SELECT address FROM Facility WHERE facilityID = facility_id), '\n',
-                                    'Employee: ', employee_first_name, ' ', employee_last_name, '\n',
-                                    'Email: ', (SELECT email FROM Person WHERE medicareID = employee_id), '\n\n',
-                                    'Schedule for the coming week:', '\n');
+            -- Increment the start date by one day
+            SET start_date = start_date + INTERVAL 1 DAY;
             
-            -- Loop through days of the week
-            SET @day := start_date;
-            day_loop: WHILE @day <= end_date DO
-                SET email_body = CONCAT(email_body, DATE_FORMAT(@day, '%W'), ': ');
-                
-                -- Get employee's schedule for the day
-                SET @employee_schedule := '';
-                SELECT GROUP_CONCAT(
-                    IFNULL(DATE_FORMAT(startTime, '%H:%i'), 'No Assignment'), ' - ',
-                    IFNULL(DATE_FORMAT(endTime, '%H:%i'), 'No Assignment')
-                ) INTO @employee_schedule
-                FROM Schedule
-                WHERE medicareID = employee_id AND workDate = @day;
-                
-                SET email_body = CONCAT(email_body, @employee_schedule, '\n');
-                
-                SET @day := DATE_ADD(@day, INTERVAL 1 DAY);
-            END WHILE day_loop;
-            
-            -- Send the email
-            INSERT INTO Email (subject, body) VALUES (email_subject, email_body);
-            
-            -- Insert email log record
-            INSERT INTO EmailLog (emailID, facilityID, medicareID, emailDate, bodySummary)
-            VALUES (LAST_INSERT_ID(), facility_id, employee_id, NOW(), LEFT(email_body, 80));
-        END LOOP employee_loop;
-    END LOOP facility_loop;
+        END WHILE;
+        
+        -- Insert the email record into the Email table
+        INSERT INTO Email (subject, body) VALUES (email_subject, email_body);
+        
+        -- Insert the email log record into the EmailLog table
+        INSERT INTO EmailLog (emailID, facilityID, medicareID, emailDate, bodySummary)
+        VALUES (LAST_INSERT_ID(), facility_id, employee_id, NOW(), LEFT(email_body, 80));
+        
+    END LOOP employee_loop;
+    
+    -- Close the cursor
+    CLOSE employee_cursor;
     
 END$$
 
