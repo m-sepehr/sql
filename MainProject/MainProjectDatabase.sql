@@ -237,12 +237,13 @@ DELIMITER $$
 USE `mdc353_1`$$
 CREATE DEFINER = CURRENT_USER TRIGGER `mdc353_1`.`Infections_AFTER_INSERT` AFTER INSERT ON `Infections` FOR EACH ROW
 BEGIN
-DECLARE infected_person_type VARCHAR(60);
+    DECLARE infected_person_type VARCHAR(60);
     DECLARE person_type VARCHAR(60);
     DECLARE schedule_date DATE;
     DECLARE facility_id VARCHAR(5);
     DECLARE facility_name VARCHAR(60);
     DECLARE principal_email VARCHAR(80);
+    DECLARE principal_ID CHAR(11);
     DECLARE email_subject VARCHAR(100);
     DECLARE email_body VARCHAR(1024);
     DECLARE first_name VARCHAR(45);
@@ -274,7 +275,7 @@ DECLARE infected_person_type VARCHAR(60);
             AND workDate BETWEEN NEW.dateOfInfection AND schedule_date;
         
         -- Get facility information and principal's email
-        SELECT f.facilityID, f.facilityName, p.email INTO facility_id, facility_name, principal_email
+        SELECT f.facilityID, f.facilityName, p.email, p.medicareID INTO facility_id, facility_name, principal_email, principal_ID
         FROM Employee e
         INNER JOIN Facility f ON e.facilityID = f.facilityID
         INNER JOIN Person p ON f.presidentID = p.medicareID
@@ -289,7 +290,7 @@ DECLARE infected_person_type VARCHAR(60);
         
         -- Insert email log record
         INSERT INTO EmailLog (emailID, facilityID, medicareID, emailDate, bodySummary)
-        VALUES (LAST_INSERT_ID(), facility_id, NEW.medicareID, NOW(), LEFT(email_body, 80));
+        VALUES (LAST_INSERT_ID(), facility_id, principal_ID, NOW(), LEFT(email_body, 80));
     END IF;
 END$$
 
