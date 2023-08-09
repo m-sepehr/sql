@@ -179,7 +179,7 @@ ENGINE = InnoDB;
 -- Table `mdc353_1`.`EmailLog`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mdc353_1`.`EmailLog` (
-  `emailID` INT NOT NULL,
+  `emailID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `facilityID` VARCHAR(5) NOT NULL,
   `medicareID` CHAR(11) NOT NULL,
   `emailDate` VARCHAR(45) NULL,
@@ -188,6 +188,7 @@ CREATE TABLE IF NOT EXISTS `mdc353_1`.`EmailLog` (
   INDEX `fk_EmailLog_Email1_idx` (`emailID` ASC) VISIBLE,
   INDEX `fk_EmailLog_Person1_idx` (`medicareID` ASC) VISIBLE,
   INDEX `fk_EmailLog_Facility1_idx` (`facilityID` ASC) VISIBLE,
+  UNIQUE INDEX `emailID_UNIQUE` (`emailID` ASC) VISIBLE,
   CONSTRAINT `fk_EmailLog_Email1`
     FOREIGN KEY (`emailID`)
     REFERENCES `mdc353_1`.`Email` (`emailID`)
@@ -230,6 +231,186 @@ CREATE TABLE IF NOT EXISTS `mdc353_1`.`Schedule` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
+USE `mdc353_1`;
+
+DELIMITER $$
+USE `mdc353_1`$$
+CREATE DEFINER = CURRENT_USER TRIGGER `mdc353_1`.`Infections_AFTER_INSERT` AFTER INSERT ON `Infections` FOR EACH ROW
+BEGIN
+DECLARE infected_person_type VARCHAR(60);
+    DECLARE person_type VARCHAR(60);
+    DECLARE schedule_date DATE;
+    DECLARE facility_id VARCHAR(5);
+    DECLARE facility_name VARCHAR(60);
+    DECLARE principal_email VARCHAR(80);
+    DECLARE email_subject VARCHAR(100);
+    DECLARE email_body VARCHAR(1024);
+    DECLARE first_name VARCHAR(45);
+    DECLARE last_name VARCHAR(60);
+    
+    -- Get the type of infection and the person's type
+    SELECT typeOfInfection INTO infected_person_type
+    FROM Infections
+    WHERE infectionID = NEW.infectionID;
+
+    -- Get the person's type (e.g., teacher, student, etc.)
+    SELECT occupation INTO person_type
+    FROM Employee
+    WHERE medicareID = NEW.medicareID;
+
+    -- Get the person's first and last name
+    SELECT firstName, lastName INTO first_name, last_name
+    FROM Person
+    WHERE medicareID = NEW.medicareID;
+    
+    -- Check if the infection is COVID-19 and the person is a teacher
+    IF infected_person_type = 'COVID-19' AND person_type = 'teacher' THEN
+        SELECT DATE_ADD(NEW.dateOfInfection, INTERVAL 2 WEEK) INTO schedule_date;
+        
+        -- Cancel schedules for the infected person for the next two weeks
+        UPDATE Schedule
+        SET startTime = NULL, endTime = NULL
+        WHERE medicareID = NEW.medicareID
+            AND workDate BETWEEN NEW.dateOfInfection AND schedule_date;
+        
+        -- Get facility information and principal's email
+        SELECT f.facilityID, f.facilityName, p.email INTO facility_id, facility_name, principal_email
+        FROM Employee e
+        INNER JOIN Facility f ON e.facilityID = f.facilityID
+        INNER JOIN Person p ON f.presidentID = p.medicareID
+        WHERE e.medicareID = NEW.medicareID;
+        
+        -- Create email subject and body
+        SET email_subject = 'Warning';
+        SET email_body = CONCAT(first_name, ' ', last_name, ' who teaches in your school has been infected with COVID-19 on ', NEW.dateOfInfection);
+        
+        -- Insert email record
+        INSERT INTO Email (subject, body) VALUES (email_subject, email_body);
+        
+        -- Insert email log record
+        INSERT INTO EmailLog (emailID, facilityID, medicareID, emailDate, bodySummary)
+        VALUES (LAST_INSERT_ID(), facility_id, NEW.medicareID, NOW(), LEFT(email_body, 80));
+    END IF;
+END$$
+
+USE `mdc353_1`$$
+CREATE DEFINER = CURRENT_USER TRIGGER `mdc353_1`.`Schedule_BEFORE_INSERT_Time_Conflict` BEFORE INSERT ON `Schedule` FOR EACH ROW
+BEGIN
+	DECLARE conflict_count INT;
+    DECLARE time_conflict INT;
+    DECLARE gap_conflict INT;
+    
+    -- Check for conflicts with existing schedule
+    SELECT COUNT(*) INTO conflict_count
+    FROM Schedule
+    WHERE medicareID = NEW.medicareID
+        AND workDate = NEW.workDate
+        AND ((NEW.startTime BETWEEN startTime AND endTime) OR (NEW.endTime BETWEEN startTime AND endTime));
+    
+    -- Check for start time not greater than end time
+    SET time_conflict = IF(NEW.startTime > NEW.endTime, 1, 0);
+    
+    -- Check for one-hour gap between shifts on the same day
+    SELECT COUNT(*) INTO gap_conflict
+    FROM Schedule
+    WHERE medicareID = NEW.medicareID
+        AND workDate = NEW.workDate
+        AND TIME_TO_SEC(TIMEDIFF(NEW.startTime, endTime)) < 3600;
+    
+    -- Check for conflicts with different facilities
+    SELECT COUNT(*) INTO conflict_count
+    FROM Schedule
+    WHERE medicareID = NEW.medicareID
+        AND workDate = NEW.workDate
+        AND facilityID != NEW.facilityID
+        AND ((NEW.startTime BETWEEN startTime AND endTime) OR (NEW.endTime BETWEEN startTime AND endTime));
+    
+    IF conflict_count > 0 OR time_conflict = 1 OR gap_conflict > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Schedule conflict or constraint violation';
+    END IF;
+    
+END$$
+
+USE `mdc353_1`$$
+CREATE DEFINER = CURRENT_USER TRIGGER `mdc353_1`.`Schedule_BEFORE_INSERT_Not_Vaxxed` BEFORE INSERT ON `Schedule` FOR EACH ROW
+BEGIN
+	DECLARE vaccination_date DATE;
+    DECLARE six_months_ago DATE;
+
+    -- Get the date of the most recent COVID-19 vaccination for the employee
+    SELECT MAX(dateOfVax) INTO vaccination_date
+    FROM Vaccinations
+    WHERE medicareID = NEW.medicareID AND vaxType = 'COVID-19';
+
+    -- Calculate the date six months ago from the current date
+    SET six_months_ago = DATE_SUB(NOW(), INTERVAL 6 MONTH);
+
+    -- Check if the employee was vaccinated with at least one dose of COVID-19 in the past six months
+    IF vaccination_date IS NULL OR vaccination_date < six_months_ago THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Employee is not vaccinated with at least one dose of COVID-19 in the past six months.';
+    END IF;
+END$$
+
+DELIMITER $$
+
+CREATE PROCEDURE SendWeeklyEmails()
+BEGIN
+    DECLARE startOfWeek DATE;
+    DECLARE endOfWeek DATE;
+    DECLARE currentDate DATE;
+    DECLARE facilityName VARCHAR(60);
+    DECLARE emailSubject VARCHAR(100);
+    DECLARE emailBody VARCHAR(1024);
+    
+    SET startOfWeek = CURDATE() + INTERVAL 1 - DAYOFWEEK(CURDATE()) DAY;
+    SET endOfWeek = startOfWeek + INTERVAL 6 DAY;
+    SET currentDate = startOfWeek;
+    
+    WHILE currentDate <= endOfWeek DO
+        SET facilityName = (SELECT DISTINCT f.facilityName
+                            FROM Facility f
+                            INNER JOIN Schedule s ON f.facilityID = s.facilityID
+                            WHERE s.workDate = currentDate);
+        
+        SET emailSubject = CONCAT(facilityName, ' Schedule for ', DATE_FORMAT(currentDate, '%d-%b-%Y'), ' to ', DATE_FORMAT(currentDate + INTERVAL 6 DAY, '%d-%b-%Y'));
+        
+        SET emailBody = CONCAT('Facility Name: ', facilityName, '\n');
+        
+        SELECT GROUP_CONCAT(empDetails SEPARATOR '\n') INTO emailBody
+        FROM (
+            SELECT CONCAT('Employee: ', p.firstName, ' ', p.lastName, ' (', p.email, ')',
+                          IF(s.startTime IS NOT NULL,
+                             CONCAT('\nStart Time: ', s.startTime, ' End Time: ', s.endTime),
+                             '\nNo Assignment')) AS empDetails
+            FROM Person p
+            INNER JOIN Schedule s ON p.medicareID = s.medicareID
+            WHERE s.workDate = currentDate
+        ) AS subquery;
+
+        -- Insert email record
+        INSERT INTO Email (subject, body) VALUES (emailSubject, emailBody);
+        -- Insert email log record
+        INSERT INTO EmailLog (emailID, facilityID, medicareID, emailDate, bodySummary)
+        VALUES (LAST_INSERT_ID(), facility_id, medicare_id, NOW(), LEFT(email_body, 80));
+        SET currentDate = currentDate + INTERVAL 1 DAY;
+    END WHILE;
+    
+    SELECT 'Emails sent successfully.';
+END$$
+
+DELIMITER $$
+
+CREATE EVENT SendWeeklyEmailsEvent
+ON SCHEDULE EVERY 1 WEEK
+STARTS TIMESTAMP('2023-01-01') -- first sunday of 2023
+DO
+BEGIN
+    CALL SendWeeklyEmails();
+END$$
+
+DELIMITER ;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
