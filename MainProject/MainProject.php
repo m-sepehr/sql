@@ -177,6 +177,11 @@
         let dataArr = [];
         let rows = document.querySelectorAll("#dataResults tr");
 
+        if (rows.length === 0) {
+            alert("There is no data to export.");
+         return;
+        }
+
         for (let i = 0; i < rows.length; i++) {
             let row = [], cols = rows[i].querySelectorAll("td, th");
             
