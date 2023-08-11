@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS `mdc353_1`.`Facility` (
   `province` VARCHAR(100) NULL,
   `postalCode` CHAR(7) NOT NULL,
   `phone` VARCHAR(16) NULL,
+  `maxCapacity` INT UNSIGNED NULL,
   PRIMARY KEY (`facilityID`),
   UNIQUE INDEX `facilityID_UNIQUE` (`facilityID` ASC) VISIBLE)
 ENGINE = InnoDB;
@@ -231,6 +232,15 @@ CREATE TABLE IF NOT EXISTS `mdc353_1`.`Schedule` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
+-- -----------------------------------------------------
+-- Trigger
+
+-- After Insert On 'Infections'
+-- Veryify if new COVID-19 is inserted for a teacher
+-- Cancel teacher's schedules for the next two weeks
+-- Send email to the principal of the facility
+-- -----------------------------------------------------
+
 USE `mdc353_1`;
 
 DELIMITER $$
@@ -294,6 +304,15 @@ BEGIN
     END IF;
 END$$
 
+-- -----------------------------------------------------
+-- Trigger
+
+-- Before Insert On 'Schedule'
+-- Check for start time not greater than end time
+-- Check for one-hour gap between shifts on the same day
+-- Check for conflicts with existing schedule
+-- -----------------------------------------------------
+
 USE `mdc353_1`$$
 CREATE DEFINER = CURRENT_USER TRIGGER `mdc353_1`.`Schedule_BEFORE_INSERT_Time_Conflict` BEFORE INSERT ON `Schedule` FOR EACH ROW
 BEGIN
@@ -318,20 +337,20 @@ BEGIN
         AND workDate = NEW.workDate
         AND TIME_TO_SEC(TIMEDIFF(NEW.startTime, endTime)) < 3600;
     
-    -- Check for conflicts with different facilities
-    SELECT COUNT(*) INTO conflict_count
-    FROM Schedule
-    WHERE medicareID = NEW.medicareID
-        AND workDate = NEW.workDate
-        AND facilityID != NEW.facilityID
-        AND ((NEW.startTime BETWEEN startTime AND endTime) OR (NEW.endTime BETWEEN startTime AND endTime));
-    
     IF conflict_count > 0 OR time_conflict = 1 OR gap_conflict > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Schedule conflict or constraint violation';
     END IF;
     
 END$$
+
+-- -----------------------------------------------------
+-- Trigger
+
+-- Before Insert On 'Schedule'
+-- Check if the employee was vaccinated with at least one 
+-- dose of COVID-19 in the past six months
+-- -----------------------------------------------------
 
 USE `mdc353_1`$$
 CREATE DEFINER = CURRENT_USER TRIGGER `mdc353_1`.`Schedule_BEFORE_INSERT_Not_Vaxxed` BEFORE INSERT ON `Schedule` FOR EACH ROW
@@ -353,6 +372,13 @@ BEGIN
         SET MESSAGE_TEXT = 'Employee is not vaccinated with at least one dose of COVID-19 in the past six months.';
     END IF;
 END$$
+
+-- -----------------------------------------------------
+-- Procedure
+
+-- When called, this procedure will send weekly schedule emails
+-- to all employees of all facilities
+-- -----------------------------------------------------
 
 DELIMITER $$
 
@@ -455,6 +481,13 @@ BEGIN
     CLOSE employee_cursor;
     
 END$$
+
+-- -----------------------------------------------------
+-- Event
+
+-- This event will occur every Sunday at 12:00 AM
+-- and will call the SendWeeklyScheduleEmails procedure
+-- -----------------------------------------------------
 
 CREATE EVENT SendWeeklyEmailsEvent
 ON SCHEDULE EVERY 1 WEEK
