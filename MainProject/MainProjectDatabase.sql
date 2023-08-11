@@ -318,8 +318,8 @@ CREATE DEFINER = CURRENT_USER TRIGGER `mdc353_1`.`Schedule_BEFORE_INSERT_Time_Co
 BEGIN
 	DECLARE conflict_count INT;
     DECLARE time_conflict INT;
-    DECLARE gap_conflict INT;
-    
+    DECLARE gap_conflict INT; 
+	
     -- Check for conflicts with existing schedule
     SELECT COUNT(*) INTO conflict_count
     FROM Schedule
@@ -328,7 +328,8 @@ BEGIN
         AND ((NEW.startTime BETWEEN startTime AND endTime) OR (NEW.endTime BETWEEN startTime AND endTime));
     
     -- Check for start time not greater than end time
-    SET time_conflict = IF(NEW.startTime > NEW.endTime, 1, 0);
+	-- Check if new schedule is within the next 4 weeks
+    SET time_conflict = IF((NEW.startTime > NEW.endTime) OR (NEW.workDate < CURDATE() OR NEW.workDate >= DATE_ADD(CURDATE(), INTERVAL 4 WEEK)), 1, 0);
     
     -- Check for one-hour gap between shifts on the same day
     SELECT COUNT(*) INTO gap_conflict
@@ -342,7 +343,7 @@ BEGIN
         SET MESSAGE_TEXT = 'Schedule conflict or constraint violation';
     END IF;
     
-END$$
+END;
 
 -- -----------------------------------------------------
 -- Trigger
