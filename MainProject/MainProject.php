@@ -99,6 +99,7 @@
                 <div class="buttons"> <!-- Wrap buttons in a container div -->
                     <button type="submit">Execute</button>
                     <button type="button" id="clearButton">Clear Results</button>
+                    <button type="button" id="exportToCSV">Export to CSV</button>
                 </div>
         </form>
         <div id="results">
@@ -132,9 +133,9 @@
                             } elseif(strtolower(substr(trim($sql), 0, 6)) === 'select') {
                                 $num_rows = $result->num_rows; // Get number of retrieved rows
                                 echo "<div style='color: blue; text-align: center; margin-bottom: 20px;'><b>{$num_rows} row(s) retrieved.</b></div>";
-                    
+                     
                                 echo '<div style="text-align: center;">';
-                                echo '<table style="border-collapse: collapse; width: 90%; margin: 0 auto;">';
+                                echo '<table id="dataResults" style="border-collapse: collapse; width: 90%; margin: 0 auto;">';
                     
                                 // Display attribute names in bold (header row)
                                 $field_names = $result->fetch_fields();
@@ -171,6 +172,37 @@
         document.getElementById("clearButton").addEventListener("click", function() {
         document.getElementById("results").innerHTML = ""; // Clear the content
         });
+
+        document.getElementById("exportToCSV").addEventListener("click", function() {
+        let dataArr = [];
+        let rows = document.querySelectorAll("#dataResults tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+            
+            for (let j = 0; j < cols.length; j++) {
+                let value = cols[j].innerText;
+                row.push('"' + value.replace(/"/g, '""') + '"'); // escape double quotes
+            }
+
+            dataArr.push(row.join(","));
+        }
+
+        let csvData = dataArr.join("\n");
+        let blob = new Blob([csvData], { type: 'text/csv' });
+        let url = window.URL.createObjectURL(blob);
+
+        let a = document.createElement("a");
+        a.style.display = "none";
+        a.href = url;
+        a.download = "export.csv";
+
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    });
+
+
     </script>
 </body>
 </html>
