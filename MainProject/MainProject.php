@@ -72,6 +72,9 @@
         #clearButton {
             background-color: #dc3545; /* Red background color */
         }
+        #exportToCSV {
+            background-color: #28a745; /* Green background color */
+        }
         #results {
             max-height: 60vh; /* Adjust the maximum height as needed */
             overflow-y: auto;
