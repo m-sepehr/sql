@@ -119,33 +119,47 @@
                         $result = $conn->query($sql);
 
                         if ($result !== false) {
-                            echo '<div style="text-align: center;">'; // Center the table
-                            echo '<table style="border-collapse: collapse; width: 90%; margin: 0 auto;">'; // Center the table horizontally
-
-                            // Display attribute names in bold
-                            $field_names = $result->fetch_fields();
-                            // Display attribute names in bold (header row)
-                        echo "<tr id='headerRow'>";
-                        foreach ($field_names as $field) {
-                            echo "<th style='border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;'><b>" . htmlspecialchars($field->name) . "</b></th>";
-                        }
-                        echo "</tr>";
-
-                            // Display data rows
-                            while ($row = $result->fetch_assoc()) {
-                                echo "<tr>";
-                                foreach ($row as $value) {
-                                    echo "<td style='border: 1px solid #ddd; padding: 8px;'>" . htmlspecialchars($value) . "</td>";
+                            
+                            if (strtolower(substr(trim($sql), 0, 6)) === 'insert') {
+                                $affected_rows = $conn->affected_rows;
+                                echo "<div style='color: green; text-align: center; margin-bottom: 20px;'><b>{$affected_rows} row(s) successfully inserted.</b></div>";
+                            } elseif (strtolower(substr(trim($sql), 0, 6)) === 'delete') {
+                                $affected_rows = $conn->affected_rows;
+                                echo "<div style='color: red; text-align: center; margin-bottom: 20px;'><b>{$affected_rows} row(s) successfully deleted.</b></div>";
+                            } elseif (strtolower(substr(trim($sql), 0, 6)) === 'update') {
+                                $affected_rows = $conn->affected_rows;
+                                echo "<div style='color: orange; text-align: center; margin-bottom: 20px;'><b>{$affected_rows} row(s) successfully updated.</b></div>";
+                            } elseif(strtolower(substr(trim($sql), 0, 6)) === 'select') {
+                                $num_rows = $result->num_rows; // Get number of retrieved rows
+                                echo "<div style='color: blue; text-align: center; margin-bottom: 20px;'><b>{$num_rows} row(s) retrieved.</b></div>";
+                    
+                                echo '<div style="text-align: center;">';
+                                echo '<table style="border-collapse: collapse; width: 90%; margin: 0 auto;">';
+                    
+                                // Display attribute names in bold (header row)
+                                $field_names = $result->fetch_fields();
+                                echo "<tr id='headerRow'>";
+                                foreach ($field_names as $field) {
+                                    echo "<th style='border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;'><b>" . htmlspecialchars($field->name) . "</b></th>";
                                 }
                                 echo "</tr>";
-                            }
-
-                            echo '</table>';
-                            echo '</div>';
+                    
+                                // Display data rows
+                                while ($row = $result->fetch_assoc()) {
+                                    echo "<tr>";
+                                    foreach ($row as $value) {
+                                        echo "<td style='border: 1px solid #ddd; padding: 8px;'>" . htmlspecialchars($value) . "</td>";
+                                    }
+                                    echo "</tr>";
+                                }
+                    
+                                echo '</table>';
+                                echo '</div>';
+                            } 
                         } else {
                             echo "Error: " . $sql . "<br>" . $conn->error;
                         }
-
+                        
                         $conn->close();
                     }
                     ?>

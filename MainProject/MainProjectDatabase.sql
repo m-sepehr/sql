@@ -311,6 +311,7 @@ END$$
 -- Check for start time not greater than end time
 -- Check for one-hour gap between shifts on the same day
 -- Check for conflicts with existing schedule
+-- Check if new schedule is within the next 4 weeks
 -- -----------------------------------------------------
 
 USE `mdc353_1`$$
@@ -328,7 +329,7 @@ BEGIN
         AND ((NEW.startTime BETWEEN startTime AND endTime) OR (NEW.endTime BETWEEN startTime AND endTime));
     
     -- Check for start time not greater than end time
-	-- Check if new schedule is within the next 4 weeks
+	  -- Check if new schedule is within the next 4 weeks
     SET time_conflict = IF((NEW.startTime > NEW.endTime) OR (NEW.workDate < CURDATE() OR NEW.workDate >= DATE_ADD(CURDATE(), INTERVAL 4 WEEK)), 1, 0);
     
     -- Check for one-hour gap between shifts on the same day
