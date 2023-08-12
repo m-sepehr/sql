@@ -22,7 +22,7 @@
 
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: Helvetica, sans-serif;
             background-color: #d0e4f5; /* Light blue background color */
             margin: 0;
             padding: 0;
