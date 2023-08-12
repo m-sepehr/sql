@@ -5,6 +5,21 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.58.3/codemirror.min.css">
+
+    <!-- SQL syntax highlighting theme (you can choose another theme if you want) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.58.3/theme/dracula.min.css">
+
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.58.3/codemirror.min.js"></script>
+
+    <!-- SQL mode for CodeMirror -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.58.3/mode/sql/sql.min.js"></script>
+
+    <!-- placeholder.js for CodeMirror -->
+    <script src="https://codemirror.net/5/addon/display/placeholder.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -36,6 +51,33 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             resize: none;
+        }
+        /* Adjusting the overall CodeMirror container */
+        .CodeMirror {
+            font-family: 'Courier';
+            font-size: 18px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            height: 200px;
+        }
+
+        /* Adjusting the background color of active line */
+        .CodeMirror-focused .CodeMirror-line::selection, .CodeMirror-line::-moz-selection, .CodeMirror-line > span::-moz-selection, .CodeMirror-line > span > span::-moz-selection {
+            background-color: #d9f1ff;
+        }
+
+        /* Adjusting the color of the text */
+        .CodeMirror-line, .CodeMirror-pre {
+            color: #333; /* Dark text color */
+        }
+
+        /* Adjusting the gutter (line numbers) */
+        .CodeMirror-gutters {
+            border-right: 1px solid #ddd;
+        }
+
+        .CodeMirror-linenumber {
+            color: #888;
         }
         .buttons {
             display: flex;
@@ -97,8 +139,8 @@
 <body>
     <div id="container">
         <h1>Education Personnel Status Tracking System (EPSTS)</h1>
-        <form method="post" action="">
-            <textarea name="sqlQuery" placeholder="Enter your SQL query here..." required></textarea>
+        <form method="post" action="" onsubmit="return validateForm();">
+                <div id="sqlEditor"></div>
                 <div class="buttons"> <!-- Wrap buttons in a container div -->
                     <button type="submit">Execute</button>
                     <button type="button" id="clearButton">Clear Results</button>
@@ -171,19 +213,31 @@
         </div>
     </div>
     <script>
+
+        // JavaScript to validate form
+        function validateForm() {
+        if (editor.getValue().trim() === "") {
+            alert('Please enter an SQL query!');  // Display an alert or any other form of notification
+            return false;  // This will prevent the form from submitting
+        }
+            return true;  // This will allow the form to submit
+        }
+
+
         // JavaScript to clear results
         document.getElementById("clearButton").addEventListener("click", function() {
-        document.getElementById("results").innerHTML = ""; // Clear the content
+            document.getElementById("results").innerHTML = ""; // Clear the content
         });
 
+        // JavaScript to export table data to CSV file
         document.getElementById("exportToCSV").addEventListener("click", function() {
-        let dataArr = [];
-        let rows = document.querySelectorAll("#dataResults tr");
+            let dataArr = [];
+            let rows = document.querySelectorAll("#dataResults tr");
 
-        if (rows.length === 0) {
-            alert("There is no data to export.");
-         return;
-        }
+            if (rows.length === 0) {
+                alert("There is no data to export.");
+                return;
+            }
 
         for (let i = 0; i < rows.length; i++) {
             let row = [], cols = rows[i].querySelectorAll("td, th");
@@ -210,6 +264,27 @@
         window.URL.revokeObjectURL(url);
     });
 
+
+    // Initializing CodeMirror
+    var editor = CodeMirror(document.getElementById("sqlEditor"), {
+        mode: "text/x-sql",
+        theme: "default",
+        lineNumbers: true,
+        autofocus: true,
+        lineWrapping: true,
+        placeholder: "SELECT * FROM ..." // This line adds placeholder text
+    });
+
+
+    // Before the form is submitted, populate the actual textarea with the contents of the CodeMirror editor
+    document.querySelector('form').addEventListener('submit', function() {
+    var sqlContent = editor.getValue();
+    var hiddenTextarea = document.createElement('textarea');
+    hiddenTextarea.name = "sqlQuery";
+    hiddenTextarea.style.display = "none";
+    hiddenTextarea.textContent = sqlContent;
+    this.appendChild(hiddenTextarea);
+});
 
     </script>
 </body>
